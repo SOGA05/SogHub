@@ -1,89 +1,80 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
 
--- Fonction pour créer un BillboardGui
-local function createBillboard(player)
-    local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(4, 0, 1, 0)
-    billboard.AlwaysOnTop = true
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.Name = "PlayerInfo"
+-- Fonction pour créer un Beam représentant un "os"
+local function createBone(part0, part1, parent)
+    local attachment0 = Instance.new("Attachment")
+    local attachment1 = Instance.new("Attachment")
+    attachment0.Parent = part0
+    attachment1.Parent = part1
 
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = Color3.new(1, 1, 1) -- Couleur blanche
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 16
-    textLabel.TextStrokeTransparency = 0.5
-    textLabel.Parent = billboard
-
-    return billboard, textLabel
+    local beam = Instance.new("Beam")
+    beam.Attachment0 = attachment0
+    beam.Attachment1 = attachment1
+    beam.Color = ColorSequence.new(Color3.new(1, 1, 1)) -- Couleur blanche
+    beam.Width0 = 0.1
+    beam.Width1 = 0.1
+    beam.Parent = parent
 end
 
--- Fonction pour attacher un affichage à un joueur
-local function attachDisplayToCharacter(player, character)
-    -- Assure que le personnage a bien un HumanoidRootPart
+-- Fonction pour créer le squelette
+local function createSkeleton(character)
     if not character:FindFirstChild("HumanoidRootPart") then
         character:WaitForChild("HumanoidRootPart")
     end
 
-    -- Vérifie si un affichage existe déjà, sinon le crée
-    if character:FindFirstChild("PlayerInfo") then
-        character.PlayerInfo:Destroy()
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return end
+
+    -- Liste des os à connecter (jointures principales)
+    local bones = {
+        {character:WaitForChild("HumanoidRootPart"), character:WaitForChild("UpperTorso")},
+        {character:WaitForChild("UpperTorso"), character:WaitForChild("LowerTorso")},
+        {character:WaitForChild("UpperTorso"), character:WaitForChild("LeftUpperArm")},
+        {character:WaitForChild("UpperTorso"), character:WaitForChild("RightUpperArm")},
+        {character:WaitForChild("LowerTorso"), character:WaitForChild("LeftUpperLeg")},
+        {character:WaitForChild("LowerTorso"), character:WaitForChild("RightUpperLeg")},
+        {character:WaitForChild("LeftUpperArm"), character:WaitForChild("LeftLowerArm")},
+        {character:WaitForChild("RightUpperArm"), character:WaitForChild("RightLowerArm")},
+        {character:WaitForChild("LeftUpperLeg"), character:WaitForChild("LeftLowerLeg")},
+        {character:WaitForChild("RightUpperLeg"), character:WaitForChild("RightLowerLeg")},
+        {character:WaitForChild("LeftLowerArm"), character:WaitForChild("LeftHand")},
+        {character:WaitForChild("RightLowerArm"), character:WaitForChild("RightHand")},
+        {character:WaitForChild("LeftLowerLeg"), character:WaitForChild("LeftFoot")},
+        {character:WaitForChild("RightLowerLeg"), character:WaitForChild("RightFoot")},
+    }
+
+    -- Crée les "os" (Beams) pour chaque paire
+    for _, bone in pairs(bones) do
+        local part0, part1 = bone[1], bone[2]
+        if part0 and part1 then
+            createBone(part0, part1, character)
+        end
     end
-
-    local billboard, textLabel = createBillboard(player)
-    billboard.Parent = character
-    billboard.Adornee = character.HumanoidRootPart
-
-    -- Met à jour continuellement l'affichage
-    local connection
-    connection = RunService.RenderStepped:Connect(function()
-        if not character or not character:FindFirstChild("HumanoidRootPart") then
-            connection:Disconnect()
-            return
-        end
-
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-            textLabel.Text = string.format("%s\n%.1f studs", player.Name, distance)
-        else
-            textLabel.Text = player.Name
-        end
-    end)
 end
 
--- Fonction pour gérer un joueur et ses réapparitions
-local function attachDisplayToPlayer(player)
-    -- Si le joueur a déjà un personnage, on lui ajoute l'affichage
-    if player.Character then
-        attachDisplayToCharacter(player, player.Character)
-    end
-
-    -- Connecte pour chaque réapparition du joueur
+-- Fonction pour ajouter un squelette à un joueur
+local function addSkeletonToPlayer(player)
     player.CharacterAdded:Connect(function(character)
-        attachDisplayToCharacter(player, character)
+        -- Ajoute un squelette une fois que le personnage est chargé
+        createSkeleton(character)
     end)
+
+    -- Si le personnage existe déjà, crée immédiatement le squelette
+    if player.Character then
+        createSkeleton(player.Character)
+    end
 end
 
--- Fonction principale pour gérer tous les joueurs
-local function handleAllPlayers()
-    -- Gérer tous les joueurs actuels dans le serveur
+-- Ajoute un squelette à tous les joueurs existants et futurs
+local function setupAllPlayers()
     for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            attachDisplayToPlayer(player)
-        end
+        addSkeletonToPlayer(player)
     end
 
-    -- Gérer les nouveaux joueurs qui rejoignent
     Players.PlayerAdded:Connect(function(player)
-        if player ~= LocalPlayer then
-            attachDisplayToPlayer(player)
-        end
+        addSkeletonToPlayer(player)
     end)
 end
 
--- Exécute le script principal
-handleAllPlayers()
+setupAllPlayers()
