@@ -8,87 +8,93 @@ local UserInputService = game:GetService("UserInputService")
 -- Variables globales
 local ESPEnabled = false
 local UIVisible = true
-local Skeletons = {}
+local Boxes = {}
 
--- Fonction pour créer une ligne de squelette
-local function createSkeletonLine()
-    local line = Drawing.new("Line")
-    line.Thickness = 1.5
-    line.Transparency = 1
-    line.Color = Color3.new(1, 1, 1) -- Blanc
-    return line
+-- Crée une boîte de dessin
+local function createBoundingBox()
+    local box = Drawing.new("Square")
+    box.Color = Color3.new(1, 1, 1) -- Blanc
+    box.Thickness = 1.5
+    box.Filled = false
+    box.Transparency = 1
+    return box
 end
 
--- Fonction pour mettre à jour un squelette
-local function updateSkeleton(character, skeletonLines)
-    local parts = {
-        {character:FindFirstChild("Head"), character:FindFirstChild("UpperTorso")},
-        {character:FindFirstChild("UpperTorso"), character:FindFirstChild("LowerTorso")},
-        {character:FindFirstChild("UpperTorso"), character:FindFirstChild("LeftUpperArm")},
-        {character:FindFirstChild("LeftUpperArm"), character:FindFirstChild("LeftLowerArm")},
-        {character:FindFirstChild("LeftLowerArm"), character:FindFirstChild("LeftHand")},
-        {character:FindFirstChild("UpperTorso"), character:FindFirstChild("RightUpperArm")},
-        {character:FindFirstChild("RightUpperArm"), character:FindFirstChild("RightLowerArm")},
-        {character:FindFirstChild("RightLowerArm"), character:FindFirstChild("RightHand")},
-        {character:FindFirstChild("LowerTorso"), character:FindFirstChild("LeftUpperLeg")},
-        {character:FindFirstChild("LeftUpperLeg"), character:FindFirstChild("LeftLowerLeg")},
-        {character:FindFirstChild("LeftLowerLeg"), character:FindFirstChild("LeftFoot")},
-        {character:FindFirstChild("LowerTorso"), character:FindFirstChild("RightUpperLeg")},
-        {character:FindFirstChild("RightUpperLeg"), character:FindFirstChild("RightLowerLeg")},
-        {character:FindFirstChild("RightLowerLeg"), character:FindFirstChild("RightFoot")},
-    }
+-- Met à jour la boîte de dessin autour d'un joueur
+local function updateBoundingBox(character, box)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        local size = Vector3.new(4, 6, 0) -- Taille approximative pour encadrer le joueur
+        local corners = {
+            humanoidRootPart.Position + Vector3.new(-size.X, size.Y, 0), -- Haut-gauche
+            humanoidRootPart.Position + Vector3.new(size.X, size.Y, 0),  -- Haut-droit
+            humanoidRootPart.Position + Vector3.new(size.X, -size.Y, 0), -- Bas-droit
+            humanoidRootPart.Position + Vector3.new(-size.X, -size.Y, 0) -- Bas-gauche
+        }
 
-    for i, partPair in ipairs(parts) do
-        local partA, partB = partPair[1], partPair[2]
-        if partA and partB then
-            local posA = Camera:WorldToViewportPoint(partA.Position)
-            local posB = Camera:WorldToViewportPoint(partB.Position)
-            skeletonLines[i].From = Vector2.new(posA.X, posA.Y)
-            skeletonLines[i].To = Vector2.new(posB.X, posB.Y)
-            skeletonLines[i].Visible = ESPEnabled
-        else
-            skeletonLines[i].Visible = false
+        local screenCorners = {}
+        local isVisible = true
+
+        -- Convertit les positions en espace-écran
+        for _, corner in ipairs(corners) do
+            local screenPos, onScreen = Camera:WorldToViewportPoint(corner)
+            if not onScreen then
+                isVisible = false
+                break
+            end
+            table.insert(screenCorners, Vector2.new(screenPos.X, screenPos.Y))
         end
+
+        if isVisible and #screenCorners == 4 then
+            -- Dessine le carré
+            box.Visible = ESPEnabled
+            box.Size = Vector2.new(
+                screenCorners[2].X - screenCorners[1].X,
+                screenCorners[3].Y - screenCorners[1].Y
+            )
+            box.Position = Vector2.new(
+                screenCorners[1].X,
+                screenCorners[1].Y
+            )
+        else
+            box.Visible = false
+        end
+    else
+        box.Visible = false
     end
 end
 
--- Ajoute un squelette au personnage d'un joueur
-local function addSkeletonToPlayer(player)
+-- Ajoute un carré autour du joueur
+local function addBoxToPlayer(player)
     player.CharacterAdded:Connect(function(character)
         character:WaitForChild("HumanoidRootPart")
-        character:WaitForChild("Head")
+        
+        -- Crée une boîte pour ce joueur
+        local box = createBoundingBox()
+        Boxes[character] = box
 
-        -- Crée les lignes du squelette
-        local skeletonLines = {}
-        for i = 1, 14 do
-            table.insert(skeletonLines, createSkeletonLine())
-        end
-        Skeletons[character] = skeletonLines
-
-        -- Met à jour le squelette à chaque frame
+        -- Met à jour la boîte à chaque frame
         RunService.RenderStepped:Connect(function()
             if character and character:FindFirstChild("HumanoidRootPart") then
-                updateSkeleton(character, skeletonLines)
+                updateBoundingBox(character, box)
             else
-                for _, line in ipairs(skeletonLines) do
-                    line.Visible = false
-                end
+                box.Visible = false
             end
         end)
     end)
 end
 
--- Configure les squelettes pour tous les joueurs
-local function setupSkeletons()
+-- Configure les boîtes pour tous les joueurs
+local function setupBoundingBoxes()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            addSkeletonToPlayer(player)
+            addBoxToPlayer(player)
         end
     end
 
     Players.PlayerAdded:Connect(function(player)
         if player ~= LocalPlayer then
-            addSkeletonToPlayer(player)
+            addBoxToPlayer(player)
         end
     end)
 end
@@ -126,5 +132,5 @@ local function createUI()
 end
 
 -- Lancer le script
-setupSkeletons()
+setupBoundingBoxes()
 createUI()
