@@ -4,11 +4,14 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Mouse = LocalPlayer:GetMouse()
 
 -- Variables globales
 local ESPEnabled = false -- Détermine si l'ESP est activé ou désactivé
+local AimBotEnabled = false -- Détermine si l'AimBot est activé ou désactivé
 local ESPObjects = {} -- Table pour stocker les ESP créés
 local UIVisible = true -- Détermine si l'UI est visible ou non
+local AimTarget = nil -- La cible actuelle de l'AimBot
 
 -- Crée un BillboardGui pour un joueur
 local function createESP(player)
@@ -99,25 +102,75 @@ local function setupESP()
     end)
 end
 
+-- Fonction pour l'AimBot
+local function aimAtTarget()
+    if AimBotEnabled and AimTarget then
+        local targetCharacter = AimTarget.Character
+        if targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart") then
+            local targetPosition = targetCharacter.HumanoidRootPart.Position
+            local aimPosition = Camera:WorldToScreenPoint(targetPosition)
+            mousemoveabs(aimPosition.X, aimPosition.Y)
+        end
+    end
+end
+
+-- Détermine la cible la plus proche de la souris
+local function getClosestPlayerToMouse()
+    local closestPlayer = nil
+    local closestDistance = math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPosition = player.Character.HumanoidRootPart.Position
+            local screenPosition, onScreen = Camera:WorldToViewportPoint(targetPosition)
+            if onScreen then
+                local mousePosition = Vector2.new(Mouse.X, Mouse.Y)
+                local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - mousePosition).Magnitude
+                if distance < closestDistance then
+                    closestPlayer = player
+                    closestDistance = distance
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
 -- Fonction pour créer l'interface utilisateur
 local function createUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "ESPControlUI"
     screenGui.Parent = game:GetService("CoreGui")
 
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.Position = UDim2.new(0, 10, 0, 10) -- Position dans le coin supérieur gauche
-    button.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-    button.TextColor3 = Color3.new(1, 1, 1)
-    button.Font = Enum.Font.SourceSansBold
-    button.TextSize = 20
-    button.Text = "Toggle ESP (OFF)"
-    button.Parent = screenGui
+    local espButton = Instance.new("TextButton")
+    espButton.Size = UDim2.new(0, 200, 0, 50)
+    espButton.Position = UDim2.new(0, 10, 0, 10)
+    espButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    espButton.TextColor3 = Color3.new(1, 1, 1)
+    espButton.Font = Enum.Font.SourceSansBold
+    espButton.TextSize = 20
+    espButton.Text = "Toggle ESP (OFF)"
+    espButton.Parent = screenGui
 
-    button.MouseButton1Click:Connect(function()
-        ESPEnabled = not ESPEnabled -- Inverse l'état de l'ESP
-        button.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
+    local aimBotButton = Instance.new("TextButton")
+    aimBotButton.Size = UDim2.new(0, 200, 0, 50)
+    aimBotButton.Position = UDim2.new(0, 10, 0, 70)
+    aimBotButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    aimBotButton.TextColor3 = Color3.new(1, 1, 1)
+    aimBotButton.Font = Enum.Font.SourceSansBold
+    aimBotButton.TextSize = 20
+    aimBotButton.Text = "Toggle AimBot (OFF)"
+    aimBotButton.Parent = screenGui
+
+    espButton.MouseButton1Click:Connect(function()
+        ESPEnabled = not ESPEnabled
+        espButton.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
+    end)
+
+    aimBotButton.MouseButton1Click:Connect(function()
+        AimBotEnabled = not AimBotEnabled
+        aimBotButton.Text = AimBotEnabled and "Toggle AimBot (ON)" or "Toggle AimBot (OFF)"
     end)
 
     -- Écoute les entrées clavier pour afficher/masquer l'UI
@@ -132,3 +185,9 @@ end
 -- Lancer le script
 setupESP()
 createUI()
+
+-- Met à jour la cible pour l'AimBot
+RunService.RenderStepped:Connect(function()
+    AimTarget = getClosestPlayerToMouse()
+    aimAtTarget()
+end)
