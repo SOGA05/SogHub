@@ -6,121 +6,117 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 -- Variables globales
-local ESPEnabled = false -- Détermine si l'ESP est activé ou désactivé
-local ESPObjects = {} -- Table pour stocker les ESP créés
-local UIVisible = true -- Détermine si l'UI est visible ou non
+local ESPEnabled = false
+local UIVisible = true
+local Skeletons = {}
 
--- Crée un BillboardGui pour un joueur
-local function createESP(player)
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "PlayerESP"
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(4, 0, 1, 0)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.BackgroundTransparency = 1
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.TextColor3 = Color3.new(1, 1, 1) -- Couleur blanche
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 16
-    textLabel.TextStrokeTransparency = 0.5
-    textLabel.Parent = billboard
-
-    return billboard, textLabel
+-- Fonction pour créer une ligne de squelette
+local function createSkeletonLine()
+    local line = Drawing.new("Line")
+    line.Thickness = 1.5
+    line.Transparency = 1
+    line.Color = Color3.new(1, 1, 1) -- Blanc
+    return line
 end
 
--- Met à jour le BillboardGui d'un joueur
-local function updateESP(billboard, textLabel, character)
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if humanoidRootPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local distance = (humanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-        textLabel.Text = string.format("%s\n%.1f studs", character.Name, distance)
-        billboard.Adornee = humanoidRootPart
+-- Fonction pour mettre à jour un squelette
+local function updateSkeleton(character, skeletonLines)
+    local parts = {
+        {character:FindFirstChild("Head"), character:FindFirstChild("UpperTorso")},
+        {character:FindFirstChild("UpperTorso"), character:FindFirstChild("LowerTorso")},
+        {character:FindFirstChild("UpperTorso"), character:FindFirstChild("LeftUpperArm")},
+        {character:FindFirstChild("LeftUpperArm"), character:FindFirstChild("LeftLowerArm")},
+        {character:FindFirstChild("LeftLowerArm"), character:FindFirstChild("LeftHand")},
+        {character:FindFirstChild("UpperTorso"), character:FindFirstChild("RightUpperArm")},
+        {character:FindFirstChild("RightUpperArm"), character:FindFirstChild("RightLowerArm")},
+        {character:FindFirstChild("RightLowerArm"), character:FindFirstChild("RightHand")},
+        {character:FindFirstChild("LowerTorso"), character:FindFirstChild("LeftUpperLeg")},
+        {character:FindFirstChild("LeftUpperLeg"), character:FindFirstChild("LeftLowerLeg")},
+        {character:FindFirstChild("LeftLowerLeg"), character:FindFirstChild("LeftFoot")},
+        {character:FindFirstChild("LowerTorso"), character:FindFirstChild("RightUpperLeg")},
+        {character:FindFirstChild("RightUpperLeg"), character:FindFirstChild("RightLowerLeg")},
+        {character:FindFirstChild("RightLowerLeg"), character:FindFirstChild("RightFoot")},
+    }
+
+    for i, partPair in ipairs(parts) do
+        local partA, partB = partPair[1], partPair[2]
+        if partA and partB then
+            local posA = Camera:WorldToViewportPoint(partA.Position)
+            local posB = Camera:WorldToViewportPoint(partB.Position)
+            skeletonLines[i].From = Vector2.new(posA.X, posA.Y)
+            skeletonLines[i].To = Vector2.new(posB.X, posB.Y)
+            skeletonLines[i].Visible = ESPEnabled
+        else
+            skeletonLines[i].Visible = false
+        end
     end
 end
 
--- Ajoute un ESP à un joueur
-local function addESPToPlayer(player)
+-- Ajoute un squelette au personnage d'un joueur
+local function addSkeletonToPlayer(player)
     player.CharacterAdded:Connect(function(character)
-        character:WaitForChild("HumanoidRootPart") -- Attend que le personnage soit chargé
+        character:WaitForChild("HumanoidRootPart")
+        character:WaitForChild("Head")
 
-        -- Vérifie si un ESP existe déjà
-        if not character:FindFirstChild("PlayerESP") then
-            local billboard, textLabel = createESP(player)
-            billboard.Parent = character
-            table.insert(ESPObjects, billboard) -- Ajoute le Billboard à la table
-
-            -- Met à jour l'ESP en continu
-            RunService.RenderStepped:Connect(function()
-                if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
-                    updateESP(billboard, textLabel, character)
-                    billboard.Enabled = true
-                else
-                    billboard.Enabled = false
-                end
-            end)
+        -- Crée les lignes du squelette
+        local skeletonLines = {}
+        for i = 1, 14 do
+            table.insert(skeletonLines, createSkeletonLine())
         end
+        Skeletons[character] = skeletonLines
+
+        -- Met à jour le squelette à chaque frame
+        RunService.RenderStepped:Connect(function()
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                updateSkeleton(character, skeletonLines)
+            else
+                for _, line in ipairs(skeletonLines) do
+                    line.Visible = false
+                end
+            end
+        end)
     end)
-
-    -- Si le joueur a déjà un personnage chargé
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local character = player.Character
-        if not character:FindFirstChild("PlayerESP") then
-            local billboard, textLabel = createESP(player)
-            billboard.Parent = character
-            table.insert(ESPObjects, billboard) -- Ajoute le Billboard à la table
-
-            -- Met à jour l'ESP en continu
-            RunService.RenderStepped:Connect(function()
-                if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
-                    updateESP(billboard, textLabel, character)
-                    billboard.Enabled = true
-                else
-                    billboard.Enabled = false
-                end
-            end)
-        end
-    end
 end
 
--- Ajoute l'ESP à tous les joueurs actuels et futurs
-local function setupESP()
+-- Configure les squelettes pour tous les joueurs
+local function setupSkeletons()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            addESPToPlayer(player)
+            addSkeletonToPlayer(player)
         end
     end
 
     Players.PlayerAdded:Connect(function(player)
         if player ~= LocalPlayer then
-            addESPToPlayer(player)
+            addSkeletonToPlayer(player)
         end
     end)
 end
 
--- Fonction pour créer l'interface utilisateur
+-- Crée l'interface utilisateur
 local function createUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "ESPControlUI"
     screenGui.Parent = game:GetService("CoreGui")
 
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.Position = UDim2.new(0, 10, 0, 10) -- Position dans le coin supérieur gauche
-    button.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-    button.TextColor3 = Color3.new(1, 1, 1)
-    button.Font = Enum.Font.SourceSansBold
-    button.TextSize = 20
-    button.Text = "Toggle ESP (OFF)"
-    button.Parent = screenGui
+    -- Bouton ESP
+    local espButton = Instance.new("TextButton")
+    espButton.Size = UDim2.new(0, 200, 0, 50)
+    espButton.Position = UDim2.new(0, 10, 0, 10)
+    espButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    espButton.TextColor3 = Color3.new(1, 1, 1)
+    espButton.Font = Enum.Font.SourceSansBold
+    espButton.TextSize = 20
+    espButton.Text = "Toggle ESP (OFF)"
+    espButton.Parent = screenGui
 
-    button.MouseButton1Click:Connect(function()
-        ESPEnabled = not ESPEnabled -- Inverse l'état de l'ESP
-        button.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
+    -- ESP Bouton logique
+    espButton.MouseButton1Click:Connect(function()
+        ESPEnabled = not ESPEnabled
+        espButton.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
     end)
 
-    -- Écoute les entrées clavier pour afficher/masquer l'UI
+    -- Touche pour cacher/afficher l'UI
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then
             UIVisible = not UIVisible
@@ -130,5 +126,5 @@ local function createUI()
 end
 
 -- Lancer le script
-setupESP()
+setupSkeletons()
 createUI()
