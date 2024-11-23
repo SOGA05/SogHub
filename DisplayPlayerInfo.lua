@@ -7,74 +7,73 @@ local UserInputService = game:GetService("UserInputService")
 
 -- Variables globales
 local ESPEnabled = false
-local ESPObjects = {}
 local UIVisible = true
+local ESPObjects = {}
 
--- Crée un BillboardGui pour ESP
-local function createESP(player)
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "PlayerESP"
-    billboard.AlwaysOnTop = true
-    billboard.Size = UDim2.new(4, 0, 1, 0)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.BackgroundTransparency = 1
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 16
-    textLabel.TextStrokeTransparency = 0.5
-    textLabel.Parent = billboard
-
-    return billboard, textLabel
+-- Crée un label 2D pour afficher les informations du joueur
+local function createESPLabel()
+    local label = Drawing.new("Text")
+    label.Size = 18
+    label.Color = Color3.new(1, 1, 1) -- Blanc
+    label.Center = true
+    label.Outline = true
+    label.OutlineColor = Color3.new(0, 0, 0) -- Noir
+    label.Visible = false
+    return label
 end
 
--- Met à jour l'ESP
-local function updateESP(billboard, textLabel, character)
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if humanoidRootPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local distance = (humanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-        textLabel.Text = string.format("%s\n%.1f studs", character.Name, distance)
-        billboard.Adornee = humanoidRootPart
+-- Met à jour les informations d'un joueur sur l'écran
+local function updateESPLabel(character, label)
+    if not character:FindFirstChild("HumanoidRootPart") then
+        label.Visible = false
+        return
     end
+
+    local rootPart = character.HumanoidRootPart
+    local screenPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+
+    -- Affiche le label, même si le joueur est derrière un mur ou à distance
+    label.Visible = ESPEnabled
+    label.Position = Vector2.new(screenPos.X, screenPos.Y - 20)
+    label.Text = string.format(
+        "%s\n%.1f studs",
+        character.Name,
+        (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+    )
 end
 
--- Ajoute un ESP au joueur
+-- Ajoute un ESP pour un joueur
 local function addESPToPlayer(player)
     player.CharacterAdded:Connect(function(character)
         character:WaitForChild("HumanoidRootPart")
 
-        if not character:FindFirstChild("PlayerESP") then
-            local billboard, textLabel = createESP(player)
-            billboard.Parent = character
-            table.insert(ESPObjects, billboard)
+        local label = createESPLabel()
+        ESPObjects[character] = label
 
-            RunService.RenderStepped:Connect(function()
-                if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
-                    updateESP(billboard, textLabel, character)
-                    billboard.Enabled = true
-                else
-                    billboard.Enabled = false
-                end
-            end)
-        end
+        RunService.RenderStepped:Connect(function()
+            if character and ESPObjects[character] then
+                updateESPLabel(character, label)
+            else
+                label.Visible = false
+            end
+        end)
     end)
 end
 
--- Configure l'ESP pour tous les joueurs
-local function setupESP()
-    for _, player in pairs(Players:GetPlayers()) do
+-- Supprime les anciens ESP et recrée pour tous les joueurs
+local function refreshESP()
+    -- Nettoie les anciens ESP
+    for _, label in pairs(ESPObjects) do
+        label:Remove()
+    end
+    ESPObjects = {}
+
+    -- Ajoute des ESP pour tous les joueurs
+    for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             addESPToPlayer(player)
         end
     end
-
-    Players.PlayerAdded:Connect(function(player)
-        if player ~= LocalPlayer then
-            addESPToPlayer(player)
-        end
-    end)
 end
 
 -- Crée l'interface utilisateur
@@ -109,6 +108,15 @@ local function createUI()
     end)
 end
 
+-- Relance périodiquement l'ESP pour s'assurer que tout le monde est affecté
+local function startAutoRefresh()
+    while true do
+        task.wait(10) -- Rafraîchit toutes les 10 secondes
+        refreshESP()
+    end
+end
+
 -- Lancer le script
-setupESP()
 createUI()
+refreshESP()
+task.spawn(startAutoRefresh)
