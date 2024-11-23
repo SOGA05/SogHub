@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local ESPEnabled = false -- Détermine si l'ESP est activé ou désactivé
 local ESPObjects = {} -- Table pour stocker les ESP créés
 local UIVisible = true -- Détermine si l'UI est visible ou non
+local ToggleKey = Enum.KeyCode.E -- Touche par défaut pour activer/désactiver l'ESP
 
 -- Crée un BillboardGui pour un joueur
 local function createESP(player)
@@ -105,26 +106,59 @@ local function createUI()
     screenGui.Name = "ESPControlUI"
     screenGui.Parent = game:GetService("CoreGui")
 
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.Position = UDim2.new(0, 10, 0, 10) -- Position dans le coin supérieur gauche
-    button.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-    button.TextColor3 = Color3.new(1, 1, 1)
-    button.Font = Enum.Font.SourceSansBold
-    button.TextSize = 20
-    button.Text = "Toggle ESP (OFF)"
-    button.Parent = screenGui
+    local espButton = Instance.new("TextButton")
+    espButton.Size = UDim2.new(0, 200, 0, 50)
+    espButton.Position = UDim2.new(0, 10, 0, 10) -- Position dans le coin supérieur gauche
+    espButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    espButton.TextColor3 = Color3.new(1, 1, 1)
+    espButton.Font = Enum.Font.SourceSansBold
+    espButton.TextSize = 20
+    espButton.Text = "Toggle ESP (OFF)"
+    espButton.Parent = screenGui
 
-    button.MouseButton1Click:Connect(function()
+    espButton.MouseButton1Click:Connect(function()
         ESPEnabled = not ESPEnabled -- Inverse l'état de l'ESP
-        button.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
+        espButton.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
     end)
 
-    -- Écoute les entrées clavier pour afficher/masquer l'UI
+    -- Bouton pour lier une touche pour activer/désactiver l'ESP
+    local keyButton = Instance.new("TextButton")
+    keyButton.Size = UDim2.new(0, 200, 0, 50)
+    keyButton.Position = UDim2.new(0, 220, 0, 10) -- Position juste à côté
+    keyButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+    keyButton.TextColor3 = Color3.new(1, 1, 1)
+    keyButton.Font = Enum.Font.SourceSansBold
+    keyButton.TextSize = 20
+    keyButton.Text = "Toggle Key: E"
+    keyButton.Parent = screenGui
+
+    keyButton.MouseButton1Click:Connect(function()
+        -- Demande à l'utilisateur d'entrer une nouvelle touche
+        keyButton.Text = "Press any key..."
+        UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if not gameProcessed then
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    ToggleKey = input.KeyCode -- Met la nouvelle touche comme touche de basculement
+                    keyButton.Text = "Toggle Key: " .. input.KeyCode.Name
+                end
+            end
+        end)
+    end)
+
+    -- Écoute les entrées clavier pour afficher/masquer l'UI et activer/désactiver l'ESP
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then
-            UIVisible = not UIVisible
-            screenGui.Enabled = UIVisible
+        if not gameProcessed then
+            -- Afficher ou masquer l'UI avec CTRL droit
+            if input.KeyCode == Enum.KeyCode.RightControl then
+                UIVisible = not UIVisible
+                screenGui.Enabled = UIVisible
+            end
+
+            -- Toggle ESP avec la touche choisie
+            if input.KeyCode == ToggleKey then
+                ESPEnabled = not ESPEnabled -- Inverse l'état de l'ESP
+                espButton.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
+            end
         end
     end)
 end
