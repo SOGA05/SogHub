@@ -1,15 +1,10 @@
+-- Script local à placer dans StarterPlayerScripts
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
-
-local ESPEnabled = false 
-local ESPObjects = {} 
-local UIVisible = true 
-
-
+-- Crée un BillboardGui pour un joueur
 local function createESP(player)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PlayerESP"
@@ -20,16 +15,16 @@ local function createESP(player)
     local textLabel = Instance.new("TextLabel")
     textLabel.BackgroundTransparency = 1
     textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.TextColor3 = Color3.new(1, 1, 1) 
+    textLabel.TextColor3 = Color3.new(1, 1, 1) -- Couleur blanche
     textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 8
+    textLabel.TextSize = 16
     textLabel.TextStrokeTransparency = 0.5
     textLabel.Parent = billboard
 
     return billboard, textLabel
 end
 
-
+-- Met à jour le BillboardGui d'un joueur
 local function updateESP(billboard, textLabel, character)
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if humanoidRootPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -39,51 +34,43 @@ local function updateESP(billboard, textLabel, character)
     end
 end
 
-
+-- Ajoute un ESP à un joueur
 local function addESPToPlayer(player)
     player.CharacterAdded:Connect(function(character)
-        character:WaitForChild("HumanoidRootPart") 
+        character:WaitForChild("HumanoidRootPart") -- Attend que le personnage soit chargé
 
-
+        -- Vérifie si un ESP existe déjà
         if not character:FindFirstChild("PlayerESP") then
             local billboard, textLabel = createESP(player)
             billboard.Parent = character
-            table.insert(ESPObjects, billboard) 
 
-
+            -- Met à jour l'ESP en continu
             RunService.RenderStepped:Connect(function()
-                if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
+                if character and character:FindFirstChild("HumanoidRootPart") then
                     updateESP(billboard, textLabel, character)
-                    billboard.Enabled = true
-                else
-                    billboard.Enabled = false
                 end
             end)
         end
     end)
 
-
+    -- Si le joueur a déjà un personnage chargé
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         local character = player.Character
         if not character:FindFirstChild("PlayerESP") then
             local billboard, textLabel = createESP(player)
             billboard.Parent = character
-            table.insert(ESPObjects, billboard) 
 
-
+            -- Met à jour l'ESP en continu
             RunService.RenderStepped:Connect(function()
-                if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
+                if character and character:FindFirstChild("HumanoidRootPart") then
                     updateESP(billboard, textLabel, character)
-                    billboard.Enabled = true
-                else
-                    billboard.Enabled = false
                 end
             end)
         end
     end
 end
 
-
+-- Ajoute l'ESP à tous les joueurs actuels et futurs
 local function setupESP()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
@@ -97,7 +84,5 @@ local function setupESP()
         end
     end)
 end
-
-
 
 setupESP()
