@@ -99,35 +99,5 @@ local function setupESP()
 end
 
 
-local function createUI()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "ESPControlUI"
-    screenGui.Parent = game:GetService("CoreGui")
-
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.Position = UDim2.new(0, 10, 0, 10) 
-    button.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-    button.TextColor3 = Color3.new(1, 1, 1)
-    button.Font = Enum.Font.SourceSansBold
-    button.TextSize = 20
-    button.Text = "Toggle ESP (OFF)"
-    button.Parent = screenGui
-
-    button.MouseButton1Click:Connect(function()
-        ESPEnabled = not ESPEnabled
-        button.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
-    end)
-
-
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then
-            UIVisible = not UIVisible
-            screenGui.Enabled = UIVisible
-        end
-    end)
-end
-
 
 setupESP()
-createUI()
