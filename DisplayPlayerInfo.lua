@@ -7,13 +7,13 @@ local UserInputService = game:GetService("UserInputService")
 local Mouse = LocalPlayer:GetMouse()
 
 -- Variables globales
-local ESPEnabled = false -- Détermine si l'ESP est activé ou désactivé
-local AimBotEnabled = false -- Détermine si l'AimBot est activé ou désactivé
-local ESPObjects = {} -- Table pour stocker les ESP créés
-local UIVisible = true -- Détermine si l'UI est visible ou non
-local AimTarget = nil -- La cible actuelle de l'AimBot
+local ESPEnabled = false
+local AimBotEnabled = false
+local ESPObjects = {}
+local UIVisible = true
+local AimTarget = nil
 
--- Crée un BillboardGui pour un joueur
+-- Crée un BillboardGui pour ESP
 local function createESP(player)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PlayerESP"
@@ -24,7 +24,7 @@ local function createESP(player)
     local textLabel = Instance.new("TextLabel")
     textLabel.BackgroundTransparency = 1
     textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.TextColor3 = Color3.new(1, 1, 1) -- Couleur blanche
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.SourceSansBold
     textLabel.TextSize = 16
     textLabel.TextStrokeTransparency = 0.5
@@ -33,7 +33,7 @@ local function createESP(player)
     return billboard, textLabel
 end
 
--- Met à jour le BillboardGui d'un joueur
+-- Met à jour l'ESP
 local function updateESP(billboard, textLabel, character)
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     if humanoidRootPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -43,18 +43,16 @@ local function updateESP(billboard, textLabel, character)
     end
 end
 
--- Ajoute un ESP à un joueur
+-- Ajoute un ESP au joueur
 local function addESPToPlayer(player)
     player.CharacterAdded:Connect(function(character)
-        character:WaitForChild("HumanoidRootPart") -- Attend que le personnage soit chargé
+        character:WaitForChild("HumanoidRootPart")
 
-        -- Vérifie si un ESP existe déjà
         if not character:FindFirstChild("PlayerESP") then
             local billboard, textLabel = createESP(player)
             billboard.Parent = character
-            table.insert(ESPObjects, billboard) -- Ajoute le Billboard à la table
+            table.insert(ESPObjects, billboard)
 
-            -- Met à jour l'ESP en continu
             RunService.RenderStepped:Connect(function()
                 if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
                     updateESP(billboard, textLabel, character)
@@ -65,29 +63,9 @@ local function addESPToPlayer(player)
             end)
         end
     end)
-
-    -- Si le joueur a déjà un personnage chargé
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local character = player.Character
-        if not character:FindFirstChild("PlayerESP") then
-            local billboard, textLabel = createESP(player)
-            billboard.Parent = character
-            table.insert(ESPObjects, billboard) -- Ajoute le Billboard à la table
-
-            -- Met à jour l'ESP en continu
-            RunService.RenderStepped:Connect(function()
-                if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
-                    updateESP(billboard, textLabel, character)
-                    billboard.Enabled = true
-                else
-                    billboard.Enabled = false
-                end
-            end)
-        end
-    end
 end
 
--- Ajoute l'ESP à tous les joueurs actuels et futurs
+-- Configure l'ESP pour tous les joueurs
 local function setupESP()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
@@ -102,7 +80,7 @@ local function setupESP()
     end)
 end
 
--- Fonction pour l'AimBot
+-- Fonction AimBot
 local function aimAtTarget()
     if AimBotEnabled and AimTarget then
         local targetCharacter = AimTarget.Character
@@ -114,7 +92,7 @@ local function aimAtTarget()
     end
 end
 
--- Détermine la cible la plus proche de la souris
+-- Trouve le joueur le plus proche de la souris
 local function getClosestPlayerToMouse()
     local closestPlayer = nil
     local closestDistance = math.huge
@@ -137,12 +115,13 @@ local function getClosestPlayerToMouse()
     return closestPlayer
 end
 
--- Fonction pour créer l'interface utilisateur
+-- Crée l'interface utilisateur
 local function createUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "ESPControlUI"
     screenGui.Parent = game:GetService("CoreGui")
 
+    -- Bouton ESP
     local espButton = Instance.new("TextButton")
     espButton.Size = UDim2.new(0, 200, 0, 50)
     espButton.Position = UDim2.new(0, 10, 0, 10)
@@ -153,6 +132,7 @@ local function createUI()
     espButton.Text = "Toggle ESP (OFF)"
     espButton.Parent = screenGui
 
+    -- Bouton AimBot
     local aimBotButton = Instance.new("TextButton")
     aimBotButton.Size = UDim2.new(0, 200, 0, 50)
     aimBotButton.Position = UDim2.new(0, 10, 0, 70)
@@ -163,17 +143,19 @@ local function createUI()
     aimBotButton.Text = "Toggle AimBot (OFF)"
     aimBotButton.Parent = screenGui
 
+    -- ESP Bouton logique
     espButton.MouseButton1Click:Connect(function()
         ESPEnabled = not ESPEnabled
         espButton.Text = ESPEnabled and "Toggle ESP (ON)" or "Toggle ESP (OFF)"
     end)
 
+    -- AimBot Bouton logique
     aimBotButton.MouseButton1Click:Connect(function()
         AimBotEnabled = not AimBotEnabled
         aimBotButton.Text = AimBotEnabled and "Toggle AimBot (ON)" or "Toggle AimBot (OFF)"
     end)
 
-    -- Écoute les entrées clavier pour afficher/masquer l'UI
+    -- Touche pour cacher/afficher l'UI
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if not gameProcessed and input.KeyCode == Enum.KeyCode.RightControl then
             UIVisible = not UIVisible
