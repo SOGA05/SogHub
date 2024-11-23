@@ -7,94 +7,72 @@ local UserInputService = game:GetService("UserInputService")
 
 -- Variables globales
 local ESPEnabled = false
+local ESPObjects = {}
 local UIVisible = true
-local Boxes = {}
 
--- Crée une boîte de dessin
-local function createBoundingBox()
-    local box = Drawing.new("Square")
-    box.Color = Color3.new(1, 1, 1) -- Blanc
-    box.Thickness = 1.5
-    box.Filled = false
-    box.Transparency = 1
-    return box
+-- Crée un BillboardGui pour ESP
+local function createESP(player)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PlayerESP"
+    billboard.AlwaysOnTop = true
+    billboard.Size = UDim2.new(4, 0, 1, 0)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.BackgroundTransparency = 1
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.TextSize = 16
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.Parent = billboard
+
+    return billboard, textLabel
 end
 
--- Met à jour la boîte de dessin autour d'un joueur
-local function updateBoundingBox(character, box)
+-- Met à jour l'ESP
+local function updateESP(billboard, textLabel, character)
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if humanoidRootPart then
-        local size = Vector3.new(4, 6, 0) -- Taille approximative pour encadrer le joueur
-        local corners = {
-            humanoidRootPart.Position + Vector3.new(-size.X, size.Y, 0), -- Haut-gauche
-            humanoidRootPart.Position + Vector3.new(size.X, size.Y, 0),  -- Haut-droit
-            humanoidRootPart.Position + Vector3.new(size.X, -size.Y, 0), -- Bas-droit
-            humanoidRootPart.Position + Vector3.new(-size.X, -size.Y, 0) -- Bas-gauche
-        }
-
-        local screenCorners = {}
-        local isVisible = true
-
-        -- Convertit les positions en espace-écran
-        for _, corner in ipairs(corners) do
-            local screenPos, onScreen = Camera:WorldToViewportPoint(corner)
-            if not onScreen then
-                isVisible = false
-                break
-            end
-            table.insert(screenCorners, Vector2.new(screenPos.X, screenPos.Y))
-        end
-
-        if isVisible and #screenCorners == 4 then
-            -- Dessine le carré
-            box.Visible = ESPEnabled
-            box.Size = Vector2.new(
-                screenCorners[2].X - screenCorners[1].X,
-                screenCorners[3].Y - screenCorners[1].Y
-            )
-            box.Position = Vector2.new(
-                screenCorners[1].X,
-                screenCorners[1].Y
-            )
-        else
-            box.Visible = false
-        end
-    else
-        box.Visible = false
+    if humanoidRootPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local distance = (humanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+        textLabel.Text = string.format("%s\n%.1f studs", character.Name, distance)
+        billboard.Adornee = humanoidRootPart
     end
 end
 
--- Ajoute un carré autour du joueur
-local function addBoxToPlayer(player)
+-- Ajoute un ESP au joueur
+local function addESPToPlayer(player)
     player.CharacterAdded:Connect(function(character)
         character:WaitForChild("HumanoidRootPart")
-        
-        -- Crée une boîte pour ce joueur
-        local box = createBoundingBox()
-        Boxes[character] = box
 
-        -- Met à jour la boîte à chaque frame
-        RunService.RenderStepped:Connect(function()
-            if character and character:FindFirstChild("HumanoidRootPart") then
-                updateBoundingBox(character, box)
-            else
-                box.Visible = false
-            end
-        end)
+        if not character:FindFirstChild("PlayerESP") then
+            local billboard, textLabel = createESP(player)
+            billboard.Parent = character
+            table.insert(ESPObjects, billboard)
+
+            RunService.RenderStepped:Connect(function()
+                if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
+                    updateESP(billboard, textLabel, character)
+                    billboard.Enabled = true
+                else
+                    billboard.Enabled = false
+                end
+            end)
+        end
     end)
 end
 
--- Configure les boîtes pour tous les joueurs
-local function setupBoundingBoxes()
+-- Configure l'ESP pour tous les joueurs
+local function setupESP()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            addBoxToPlayer(player)
+            addESPToPlayer(player)
         end
     end
 
     Players.PlayerAdded:Connect(function(player)
         if player ~= LocalPlayer then
-            addBoxToPlayer(player)
+            addESPToPlayer(player)
         end
     end)
 end
@@ -132,5 +110,5 @@ local function createUI()
 end
 
 -- Lancer le script
-setupBoundingBoxes()
+setupESP()
 createUI()
