@@ -18,7 +18,7 @@ local function createESP(player)
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 8
+    textLabel.TextSize = 16
     textLabel.TextStrokeTransparency = 0.5
     textLabel.Parent = billboard
 
