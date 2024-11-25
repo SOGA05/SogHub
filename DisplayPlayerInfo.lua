@@ -6,6 +6,20 @@ local RunService = game:GetService("RunService")
 local ESPEnabled = true 
 local ESPObjects = {} 
 
+-- Fonction pour créer l'effet rouge et le contour blanc
+local function createHighlight(character)
+    -- Créer le contour blanc
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "HighlightEffect"
+    highlight.FillColor = Color3.new(1, 0, 0) -- Couleur de remplissage rouge
+    highlight.FillTransparency = 0.5 -- Semi-transparent
+    highlight.OutlineColor = Color3.new(1, 1, 1) -- Contour blanc
+    highlight.OutlineTransparency = 0 -- Complètement visible
+    highlight.Parent = character
+
+    return highlight
+end
+
 local function createESP(player)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PlayerESP"
@@ -49,6 +63,11 @@ local function addESPToPlayer(player)
             billboard.Parent = character
             table.insert(ESPObjects, billboard)
 
+            -- Ajouter l'effet rouge et le contour blanc
+            if not character:FindFirstChild("HighlightEffect") then
+                createHighlight(character)
+            end
+
             RunService.RenderStepped:Connect(function()
                 if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
                     updateESP(billboard, textLabel, character)
@@ -66,6 +85,11 @@ local function addESPToPlayer(player)
             local billboard, textLabel = createESP(player)
             billboard.Parent = character
             table.insert(ESPObjects, billboard)
+
+            -- Ajouter l'effet rouge et le contour blanc
+            if not character:FindFirstChild("HighlightEffect") then
+                createHighlight(character)
+            end
 
             RunService.RenderStepped:Connect(function()
                 if ESPEnabled and character and character:FindFirstChild("HumanoidRootPart") then
