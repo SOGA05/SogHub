@@ -1,8 +1,9 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
-local ESPEnabled = true
+local ESPEnabled = false -- ESP désactivé par défaut
 local ESPObjects = {}
 
 -- Fonction pour créer l'effet rouge et le contour blanc
@@ -32,7 +33,7 @@ local function createESP()
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextSize = 16
+    textLabel.TextSize = 8
     textLabel.TextStrokeTransparency = 0.5
     textLabel.Parent = billboard
 
@@ -44,7 +45,7 @@ local function updateESP(billboard, textLabel, character)
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     local humanoid = character:FindFirstChild("Humanoid")
 
-    if humanoidRootPart and humanoid and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+    if humanoidRootPart and humanoid then
         local distance = (humanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
         local health = humanoid.Health
         local maxHealth = humanoid.MaxHealth
@@ -52,8 +53,9 @@ local function updateESP(billboard, textLabel, character)
         local healthText = string.format("%s\n%.1f studs\nHealth: %d/%d", character.Name, distance, health, maxHealth)
         textLabel.Text = healthText
         billboard.Adornee = humanoidRootPart
+        billboard.Enabled = ESPEnabled -- Active ou désactive en fonction de l'état
     else
-        billboard.Enabled = false -- Désactiver si le joueur ou les parties nécessaires ne sont pas disponibles
+        billboard.Enabled = false
     end
 end
 
@@ -73,12 +75,11 @@ local function addESPToPlayer(player)
 
             local connection
             connection = RunService.RenderStepped:Connect(function()
-                if not ESPEnabled or not character:IsDescendantOf(workspace) then
+                if not character:IsDescendantOf(workspace) then
                     billboard.Enabled = false
                     connection:Disconnect()
                 else
                     updateESP(billboard, textLabel, character)
-                    billboard.Enabled = true
                 end
             end)
         end
@@ -97,12 +98,11 @@ local function addESPToPlayer(player)
 
             local connection
             connection = RunService.RenderStepped:Connect(function()
-                if not ESPEnabled or not character:IsDescendantOf(workspace) then
+                if not character:IsDescendantOf(workspace) then
                     billboard.Enabled = false
                     connection:Disconnect()
                 else
                     updateESP(billboard, textLabel, character)
-                    billboard.Enabled = true
                 end
             end)
         end
@@ -123,5 +123,15 @@ local function setupESP()
         end
     end)
 end
+
+-- Gère l'activation/désactivation avec la touche "N"
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.N then
+        ESPEnabled = not ESPEnabled -- Bascule l'état
+        for _, obj in pairs(ESPObjects) do
+            obj.Enabled = ESPEnabled -- Active ou désactive tous les objets ESP
+        end
+    end
+end)
 
 setupESP()
